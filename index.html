@@ -2,69 +2,191 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Random Bible Verse</title>
-  <link rel="stylesheet" href="style.css">
-</head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verse Display</title>
 
-<body>
-  <div id="verse-container">
-    <div id="verse" class="verse active">Loading verse...</div>
-  </div>
-  <button id="newVerseBtn">Show Another Verse</button>
+  <!-- Modern Spline Sans font -->
+  <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-  <script>
-    let verses = [];
-    const gradients = [
-      "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)",
-      "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
-      "linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)",
-      "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
-      "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)"
-    ];
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
 
-    async function loadVerses() {
-      const response = await fetch("verses.json");
-      verses = await response.json();
-      showVerse(getRandomVerse());
+      /* Background image + fallback color */
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0.897)),
+        url('YA_bg.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
+      /* Scale nicely on all screens */
+      background-size: cover;
+
+      /* Smooth overlay to blend with the grey */
+      position: relative;
+
+      color: #4da6ff;
+      font-family: "Spline Sans", sans-serif;
+
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
     }
 
-    function getRandomVerse() {
-      const v = verses[Math.floor(Math.random() * verses.length)];
-      return `<p>${v.text}</p><small>— ${v.reference}</small>`;
+
+
+    /* Subtle hover movement (desktop only) */
+    @media (hover: hover) {
+      body:hover {
+        background-position: 51% 49%;
+        /* tiny shift */
+      }
     }
 
-    function showVerse(html) {
-      const container = document.getElementById("verse-container");
-      const oldVerse = document.querySelector(".verse.active");
+    /* On mobile, we disable hover shifting because it looks weird */
+    @media (hover: none) {
+      body {
+        background-attachment: scroll;
+      }
+    }
 
-      // Change background for each verse
-      document.body.style.background = gradients[Math.floor(Math.random() * gradients.length)];
+    #logo {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 50px;
+      opacity: 0.85;
+    }
 
-      const newVerse = document.createElement("div");
-      newVerse.className = "verse slide-in";
-      newVerse.innerHTML = html;
-      container.appendChild(newVerse);
+    #bottomIcon {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 100px;
+      opacity: 0.85;
+    }
 
-      if (oldVerse) {
-        oldVerse.classList.remove("active");
-        oldVerse.classList.add("slide-out");
-        setTimeout(() => oldVerse.remove(), 600);
+    #verseBox {
+      max-width: 80%;
+      max-height: 100vh;
+      text-align: center;
+      font-size: clamp(1.4rem, 4vw, 2.8rem);
+      line-height: 1.45;
+      white-space: pre-wrap;
+      font-weight: 700;
+      /* smooth clean weight */
+      letter-spacing: -0.01em;
+      /* Spline Sans looks great slightly tighter */
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      background: #4da6ff;
+      margin-left: 3px;
+      animation: blink 0.7s infinite;
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: 1;
       }
 
-      setTimeout(() => {
-        newVerse.classList.remove("slide-in");
-        newVerse.classList.add("active");
-      }, 10);
+      50% {
+        opacity: 0;
+      }
+
+      100% {
+        opacity: 1;
+      }
     }
 
-    document.getElementById("newVerseBtn").addEventListener("click", () => {
-      showVerse(getRandomVerse());
-    });
+    #referenceBox {
+      margin-top: 20px;
+      text-align: center;
+      font-size: clamp(0.9rem, 2vw, 1.2rem);
+      color: #a7cfff;
+      /* subtle, lighter blue */
+      opacity: 0;
+      /* fade-in later */
+      transition: opacity 0.8s ease;
+      font-weight: 300;
+    }
+  </style>
+</head>
 
-    loadVerses();
+
+
+<body>
+
+  <!-- Placeholder top-left logo -->
+  <!--img id="logo" src="top_logo.png" alt="Top Logo"-->
+
+  <!-- Placeholder bottom-right icon -->
+  <img id="bottomIcon" src="verified.png" alt="Bottom Icon">
+  
+  <!-- Verse text -->
+  <div id="verseBox"></div>
+  <div id="referenceBox"></div>
+
+  <script>
+    async function loadVerse() {
+      try {
+        const res = await fetch("verses.json");
+        const verses = await res.json();
+
+        // pick random verse object
+        const selected = verses[Math.floor(Math.random() * verses.length)];
+
+        // selected.verse and selected.reference
+        typeWriter(selected.text, selected.reference);
+
+      } catch (e) {
+        document.getElementById("verseBox").textContent = "Error loading verse.";
+      }
+    }
+
+    function typeWriter(text, reference) {
+      const verseBox = document.getElementById("verseBox");
+      const referenceBox = document.getElementById("referenceBox");
+
+      verseBox.innerHTML = "";
+      referenceBox.style.opacity = 0;
+      referenceBox.innerHTML = "";
+
+      let i = 0;
+
+      function type() {
+        if (i < text.length) {
+          verseBox.innerHTML += text.charAt(i);
+          i++;
+          setTimeout(type, 25);
+        } else {
+          // add blinking cursor
+          const cursor = document.createElement("span");
+          cursor.className = "cursor";
+          verseBox.appendChild(cursor);
+
+          // show reference after short delay
+          setTimeout(() => {
+            referenceBox.innerHTML = reference;
+            referenceBox.style.opacity = 1;
+          }, 500);
+        }
+      }
+
+      type();
+    }
+
+    loadVerse();
   </script>
+
+
 </body>
 
 </html>
